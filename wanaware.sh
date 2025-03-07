@@ -1,4 +1,4 @@
-# Script to create the drata custom roles and service account
+# Script to create the WanAware custom roles and service account
 # The project to store the resources is the default per account
 
 set -e
@@ -8,9 +8,9 @@ prefix="[ WanAware ]"
 
 # Resource names
 wanaware_role_name="WanAwareReadOnly"
-serviceAccountId=$(echo "$drata_role_name" | tr '[:upper:]' '[:lower:]')
-projectRole="${drata_role_name}ProjectRole"
-organizationRole="${drata_role_name}OrganizationalRole"
+serviceAccountId=$(echo "$wanaware_role_name" | tr '[:upper:]' '[:lower:]')
+projectRole="${wanaware_role_name}ProjectRole"
+organizationRole="${wanaware_role_name}OrganizationalRole"
 
 # check google cloud shell
 if ! command -v gcloud &>/dev/null; then
@@ -26,7 +26,7 @@ projectId=$(
 )
 if [ -z "${projectId}" ]
 then
-    printf "${prefix} The default project is unset, please check the configuration...❌ \n\n"
+    printf "${prefix} The default project is unset, please check the configuration... \n\n"
     exit;
 fi
 
@@ -39,7 +39,7 @@ projectName=$(
 # if, by mistake, the user set himself an invalid project, it won't be found
 if [ -z "${projectName}" ]
 then
-    printf "${prefix} Project '${projectId}' is not found, please check the configuration...❌ \n\n"
+    printf "${prefix} Project '${projectId}' is not found, please check the configuration... \n\n"
     exit;
 fi
 
@@ -47,13 +47,15 @@ fi
 printf "\n${prefix} Will the service account connect multiple projects❓ [y/n] "
 read multipleProjects;
 
-printf "\n\n${prefix} Enabling services...🛜 \n"
+printf "\n\n${prefix} Enabling services... \n"
 gcloud services enable compute.googleapis.com cloudresourcemanager.googleapis.com admin.googleapis.com sqladmin.googleapis.com monitoring.googleapis.com cloudasset.googleapis.com --no-user-output-enabled
-printf "${prefix} Necessary services enabled 🚀 \n\n"
+printf "${prefix} Necessary services enabled \n\n"
 
 serviceAccountEmail="${serviceAccountId}@${projectId}.iam.gserviceaccount.com";
+
 # get ancestors of the project
 projectAncestorsInfo=$(gcloud projects get-ancestors $projectId --format='value[terminator="~",separator=","](type,id)')
+
 # convert projectAncestorsInfo to array below
 IFS='~'; read -r -a ancestorsArray <<< "$projectAncestorsInfo"
 
@@ -74,7 +76,7 @@ if [ -n "$organizationId" ]; then
   )
 fi
 
-printf "${prefix} Creating resources at ${organizationName}/${projectName}...🚀 \n"
+printf "${prefix} Creating resources at ${organizationName}/${projectName}... \n"
 
 # *****************************
 # START CREATING RESOURCES ==>
@@ -84,6 +86,7 @@ printf "${prefix} Creating resources at ${organizationName}/${projectName}...�
 # Custom Project Role
 # ===========================
 printf "\n${prefix} Checking custom role...\n";
+
 # Verify if the role exists already
 projectRoleInfo=$(
     gcloud iam roles list --show-deleted --project=$projectId --filter="name=projects/${projectId}/roles/${projectRole}" --format="value[separator=','](name,deleted)"
@@ -101,7 +104,7 @@ else
         gcloud iam roles undelete $projectRole --project=$projectId --no-user-output-enabled
     fi
 fi
-printf "${prefix} '${projectRole}' custom role has been created 🚀\n";
+printf "${prefix} '${projectRole}' custom role has been created \n";
 
 # Update permissions and stage
 gcloud iam roles update $projectRole --project=$projectId --permissions="\
@@ -129,7 +132,7 @@ else
         gcloud iam roles undelete $organizationRole --organization=$organizationId --no-user-output-enabled
     fi
 fi
-printf "${prefix} '${organizationRole}' organization role has been created 🚀\n";
+printf "${prefix} '${organizationRole}' organization role has been created \n";
 
 # Update permissions and stage
 gcloud iam roles update $organizationRole --organization=$organizationId --permissions="\
@@ -158,8 +161,10 @@ else
   gcloud iam service-accounts update ${serviceAccountEmail} --project="$projectId" --display-name="${serviceAccountId}" --description="Service Account with read-only access for WanAware GCP Integrator" --no-user-output-enabled;
 fi
 printf "${prefix} '${serviceAccountId}' service account has been created 🚀\n";
+
 # Force refresh the IAM Cache
 gcloud projects get-iam-policy $projectId > /dev/null || printf "${prefix} Warning: Unable to force refresh IAM cache.";
+
 # Create json key file
 printf "\n${prefix} Generating json key file...\n";
 
